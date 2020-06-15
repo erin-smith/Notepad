@@ -1,90 +1,126 @@
 // Dependencies
-var fs = require("fs");
-var express = require("express");
-var path = require("path");
+const fs = require("fs");
+const express = require("express");
+const path = require("path");
+const util = require('util');
+const readFile = util.promisify(fs.readFile);
+const writeFile = util.promisify(fs.writeFile);
+
+const myDbFilePath = path.join(__dirname, 'db/db.json');
+console.log(myDbFilePath);
 
 // Sets up the Express App
-var app = express();
-var PORT = process.env.PORT || 3001;
-
-var notes = [{ title: 'Honza', text: 'Is crazy smart' }, //placeholder
-{ title: 'Erin', text: 'is in Computer first grade' },
-{ title: 'Erin', text: 'Upgrade to second grade' }];
+let app = express();
+let PORT = process.env.PORT || 3000;
 
 // Sets up the Express app to handle data parsing
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+
 // Routes API  
 app.get("/api/notes", function (req, res)
 {
-  fs.readFile("./db/db.json", "utf8", function (err, data)
+  /*
+  fs.readFile(myDbFilePath, "utf8", function (err, data)
   {
     if (err) {
       throw err;
     }
     else {
       res.json(JSON.parse(data));
-}
-    })
+    }
+  })*/
+
+  readFile(myDbFilePath, "utf8").then(data => res.json(JSON.parse(data)));
 });
+
+function generateNewId(currentNotes)
+{
+  let highestId = 0;
+  currentNotes.forEach(note => {
+      if(note.id > highestId){
+        highestId = note.id;
+      }
+  });
+  return highestId + 1;
+}
 
 
 // Create New Notes - takes in JSON input
 app.post("/api/notes", function (req, res)
 {
-  fs.readFile("./db/db.json", "utf8", function (err, data)
+  /*
+  fs.readFile(myDbFilePath, "utf8", function (err, data)
   {
     if (err) {
       throw err;
     }
     else {
-      var notes = JSON.parse(data);
-      var id = notes[notes.length] +1;
-      var newNote = {...req.body, "ID": id};
+
+      let notes = JSON.parse(data);
+      let id = generateNewId(notes);
+      let newNote = { ...req.body, "id": id };
       notes.push(newNote);
       console.log(newNote);
-    fs.writeFile("./db/db.json", JSON.stringify(notes), function (err, data)
-{
-  if (err) {
-    throw err;
-  }
-  else {
-    res.json(newNote);
-  }
-});
-}
-});
+      fs.writeFile(myDbFilePath, JSON.stringify(notes), function (err, data)
+      {
+        if (err) {
+          throw err;
+        }
+        else {
+          res.json(newNote);
+        }
+      });
+    }
+  });*/
+
+  readFile(myDbFilePath, "utf8").then(data => {
+    let notes = JSON.parse(data);
+    const newNote = { ...req.body, "id": generateNewId(notes) };
+    notes.push(newNote);
+    writeFile(myDbFilePath, JSON.stringify(notes)).then( () => res.json(newNote));
+  });
 });
 
-/// DELETE Should receive a query parameter containing the id of a note to delete.
-  // This means you'll need to find a way to give each note a unique `id` when it's saved. 
-  //In order to delete a note, you'll need to read all notes from the `db.json` file, remove the note with the given `id` property, and then rewrite the notes to the `db.json` file.
 app.delete("/api/notes/:id", function (req, res)
 {
-  var getid =  parseInt(id);
-  console.log(id);
-  fs.readFile("./db/db.json", function (err, data)
+  const idToBeDeleted = parseInt(req.params.id);
+ /*
+  console.log(idToBeDeleted);
+  fs.readFile(myDbFilePath, function (err, data)
   {
     if (err) {
       throw err;
     }
     else {
       let notes = JSON.parse(data);
-      notes = notes.filter(newNote => newNote.id !== getid);
-      fs.writeFile("./db/db.json", JSON.stringify(notes), function (err, data)
-{
-  if (err) {
-    throw err;
-  }
-  else {
-      res.json(newNote);
-      res.send('Got a DELETE request at /user');
+      notes = notes.filter(newNote => newNote.id !== idToBeDeleted);
+      fs.writeFile(myDbFilePath, JSON.stringify(notes), function (err, data)
+      {
+        if (err) {
+          throw err;
+        }
+        else {
+          res.send('Got a DELETE request at /user');
+        }
+      });
     }
   });
-}
-});
+  */
+    readFile(myDbFilePath, "utf8").then(data => {
+      let notes = JSON.parse(data);
+      notes = notes.filter(newNote => newNote.id !== idToBeDeleted);
+      writeFile(myDbFilePath, JSON.stringify(notes)).then( ()=> {
+        res.send('Got a DELETE request at /user');
+      }).catch((error) => {
+          console.log(`Error writing file ${myDbFilePath}`);
+      });
+    }).catch((error) => {
+      console.log(`Error reading file ${myDbFilePath}`);
+  });
+
 });
 
 // Routes HTML 
