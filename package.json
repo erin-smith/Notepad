@@ -12,7 +12,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "db-json": "^0.1.0",
     "express": "^4.17.1"
   }
 }
